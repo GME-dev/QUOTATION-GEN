@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>GUNAWARDANA MOTORS-Quotation</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            width: 210mm;
+            height: 297mm;
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .company {
+            width: 48%;
+        }
+        .company-name {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            width: 48%;
+        }
+        .info-box-header {
+            font-weight: bold;
+            border: 1px solid #333;
+            padding: 5px;
+        }
+        .info-box-content {
+            border: 1px solid #333;
+            padding: 10px;
+            min-height: 70px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .info-cell {
+            border: 1px solid #333;
+        }
+        .info-label {
+            font-weight: bold;
+            padding: 5px;
+            background-color: #f9f9f9;
+        }
+        .info-value {
+            padding: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f9f9f9;
+        }
+        .amount {
+            text-align: right;
+        }
+        .total-row {
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+        }
+        .signature-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+        }
+        .signature {
+            width: 30%;
+            text-align: center;
+        }
+        .signature-title {
+            border-top: 1px solid #333;
+            padding-top: 5px;
+            margin-top: 30px;
+        }
+        .terms {
+            margin-top: 20px;
+        }
+        .terms h3 {
+            margin-bottom: 10px;
+        }
+        .terms p {
+            margin: 5px 0;
+        }
+        .tmr-logo {
+            display: flex;
+            align-items: center;
+        }
+        .tmr-logo img {
+            width: 80px;
+            height: auto;
+            margin-right: 15px;
+        }
+        .gm-logo img {
+            height: 60px;
+            width: auto;
+            margin-right: 15px;
+        }
+        .company-info {
+            display: flex;
+            align-items: flex-start;
+        }
+        .small-text {
+            font-size: 12px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header with company information side by side -->
+    <div class="header">
+        <div class="company">
+            <div class="company-info">
+                <div class="gm-logo">
+                    <img src="https://i.imghippo.com/files/PnXM2857vw.PNG" alt="Gunawardana Motors Logo">
+                </div>
+                <div>
+                    <div class="company-name" style="color: #e63946;">GUNAWARDANA MOTORS</div>
+                    <div>Embilipitiya Branch</div>
+                    <div class="small-text">Authorized Dealer - TMR Trading Lanka Pvt Ltd</div>
+                    <div>Contact: +94 77 831 80 61</div>
+                    <div>Email: gunawardanamotors@gmail.com</div>
+                </div>
+            </div>
+        </div>
+        <div class="company">
+            <div class="tmr-logo">
+                <img src="https://i.imghippo.com/files/ceP8699NhQ.jpeg" alt="TMR Trading Lanka Logo">
+                <div>
+                    <div class="company-name">TMR TRADING LANKA (PVT) LTD</div>
+                    <div>NO.145/2, KANDY ROAD</div>
+                    <div>YAKKALA,</div>
+                    <div>tmrtradinglanka@gmail.com</div>
+                    <div>Our VAT No 103304075-7000</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quotation title -->
+    <div class="title">QUOTATION</div>
+
+    <!-- Customer and quotation information -->
+    <div class="info-section">
+        <div class="info-box">
+            <div class="info-box-header">Invoice To</div>
+            <div class="info-box-content">
+                <strong>{{customerName}}</strong><br>
+                {{customerAddress}}<br>
+                {{#if bikeRegNo}}Bike Reg No: {{bikeRegNo}}{{/if}}
+            </div>
+        </div>
+        <div class="info-box" style="width: 40%;">
+            <div class="info-grid">
+                <div class="info-cell info-label">Date</div>
+                <div class="info-cell info-value">{{formattedDate}}</div>
+                <div class="info-cell info-label">Quotation No.</div>
+                <div class="info-cell info-value">{{quotationNo}}</div>
+                <div class="info-cell info-label">Terms</div>
+                <div class="info-cell info-value">Spare Parts</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parts table -->
+    <table>
+        <thead>
+            <tr>
+                <th width="50%">Description</th>
+                <th width="15%">Qty</th>
+                <th width="15%">Rate (LKR)</th>
+                <th width="20%">Amount (LKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each items}}
+            <tr>
+                <td>{{description}}</td>
+                <td>{{quantity}}</td>
+                <td class="amount">{{formattedRate}}</td>
+                <td class="amount">{{formattedAmount}}</td>
+            </tr>
+            {{/each}}
+            <tr>
+                <td colspan="3" class="total-row" style="text-align: right;">Total Amount:</td>
+                <td class="amount total-row">{{formattedTotalAmount}}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Remarks section -->
+    <div>
+        <h3>Remarks:</h3>
+        <p>{{remarks}}</p>
+    </div>
+
+    <!-- Signature section -->
+    <div class="signature-line">
+        <div class="signature">
+            <div class="signature-title">Prepared By</div>
+        </div>
+        <div class="signature">
+            <div class="signature-title">Checked By</div>
+        </div>
+        <div class="signature">
+            <div class="signature-title">Approved By</div>
+        </div>
+    </div>
+
+    <!-- Terms and conditions -->
+    <div class="terms">
+        <h3>Terms & Conditions</h3>
+        <p>- This quotation is valid for 30 days from the issue date.</p>
+        <p>- Payment via bank transfer before order processing.</p>
+        <p>- Modifications require prior approval.</p>
+        <p>- For inquiries, contact: +94 77 831 80 61 | gunawardanamotors@gmail.com</p>
+    </div>
+</body>
+</html>
