@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './QuotationList.css';
 
+// Get API URL from environment variable or default to production URL
+const API_URL = process.env.REACT_APP_API_URL || 'https://quotation-gen-production.up.railway.app';
+
 const QuotationList = () => {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +15,7 @@ const QuotationList = () => {
 
   const fetchQuotations = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/quotations`);
+      const response = await fetch(`${API_URL}/api/quotations`);
       if (!response.ok) {
         throw new Error('Failed to fetch quotations');
       }
@@ -27,7 +30,7 @@ const QuotationList = () => {
 
   const handleDownload = async (quotationNo) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/quotations/${quotationNo}/download`);
+      const response = await fetch(`${API_URL}/api/quotations/${quotationNo}/download`);
       if (!response.ok) {
         throw new Error('Failed to download PDF');
       }

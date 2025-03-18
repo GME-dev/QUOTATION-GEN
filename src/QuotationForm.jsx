@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './QuotationForm.css';
 
-// API base URL
-const API_BASE_URL = 'http://localhost:5000';
+// Get API URL from environment variable or default to production URL
+const API_URL = process.env.REACT_APP_API_URL || 'https://quotation-gen-production.up.railway.app';
 
 const QuotationForm = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +15,8 @@ const QuotationForm = () => {
   });
   
   const [quotationNo, setQuotationNo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
     // Generate quotation number: GM-YYYYMMDD-XXX
@@ -75,9 +77,11 @@ const QuotationForm = () => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/quotations`, {
+      const response = await fetch(`${API_URL}/api/quotations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,44 +93,29 @@ const QuotationForm = () => {
         }),
       });
       
-      if (response.ok) {
-        // Check if the response is a PDF
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/pdf')) {
-          // Get the filename from the Content-Disposition header
-          const contentDisposition = response.headers.get('content-disposition');
-          let filename = `Quotation-${quotationNo}.pdf`;
-          if (contentDisposition) {
-            const matches = /filename="(.+)"/.exec(contentDisposition);
-            if (matches && matches[1]) {
-              filename = matches[1];
-            }
-          }
-
-          // Create a blob from the PDF data
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          
-          // Create a temporary link element
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          
-          // Append to body, click, and remove
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Clean up the URL object
-          setTimeout(() => window.URL.revokeObjectURL(url), 100);
-        } else {
-          // Handle JSON response (error case)
-          const data = await response.json();
-          console.error('Server response:', data);
-          alert(data.message || 'Failed to generate quotation');
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Handle successful response
+      if (data.pdfUrl) {
+        // Download the PDF
+        const pdfResponse = await fetch(`${API_URL}${data.pdfUrl}`);
+        if (!pdfResponse.ok) throw new Error('Failed to download PDF');
         
-        // Reset form after successful submission
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Quotation-${quotationNo}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        // Reset form
         setFormData({
           customerName: '',
           customerAddress: '',
@@ -143,50 +132,27 @@ const QuotationForm = () => {
         const day = String(today.getDate()).padStart(2, '0');
         const randomNum = String(Math.floor(Math.random() * 900) + 100);
         setQuotationNo(`GM-${year}${month}${day}-${randomNum}`);
-        
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to generate quotation:', errorData);
-        alert(errorData.message || 'Failed to generate quotation');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('An error occurred while generating the quotation');
+      setError('Failed to generate quotation. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
   
   return (
     <div className="quotation-form-container">
-      <h1>Gunawardana Motors - Quotation Generator</h1>
-      
       <form onSubmit={handleSubmit} className="quotation-form">
+        {error && <div className="error-message">{error}</div>}
         <div className="form-header">
-          <div className="form-group">
-            <label>Quotation No:</label>
-            <input
-              type="text"
-              value={quotationNo}
-              readOnly
-              className="form-control"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label>Date:</label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              className="form-control"
-              required
-            />
+          <h2>Generate Quotation</h2>
+          <div>
+            <strong>Quotation #:</strong> {quotationNo}
           </div>
         </div>
         
         <div className="customer-section">
-          <h2>Customer Information</h2>
-          
           <div className="form-group">
             <label>Customer Name:</label>
             <input
@@ -200,7 +166,7 @@ const QuotationForm = () => {
           </div>
           
           <div className="form-group">
-            <label>Address:</label>
+            <label>Customer Address:</label>
             <textarea
               name="customerAddress"
               value={formData.customerAddress}
@@ -220,11 +186,22 @@ const QuotationForm = () => {
               className="form-control"
             />
           </div>
+          
+          <div className="form-group">
+            <label>Date:</label>
+            <input
+              type="date"
+              name="date"
+              value={formData.date}
+              onChange={handleChange}
+              className="form-control"
+              required
+            />
+          </div>
         </div>
         
         <div className="items-section">
-          <h2>Items</h2>
-          
+          <h3>Items</h3>
           <table className="items-table">
             <thead>
               <tr>
@@ -251,7 +228,7 @@ const QuotationForm = () => {
                     <input
                       type="number"
                       value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                      onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
                       className="form-control"
                       min="1"
                       required
@@ -261,7 +238,7 @@ const QuotationForm = () => {
                     <input
                       type="number"
                       value={item.rate}
-                      onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
+                      onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
                       className="form-control"
                       min="0"
                       step="0.01"
@@ -269,7 +246,7 @@ const QuotationForm = () => {
                     />
                   </td>
                   <td>
-                    {(parseFloat(item.quantity) * parseFloat(item.rate || 0)).toFixed(2)}
+                    {(item.quantity * (item.rate || 0)).toFixed(2)}
                   </td>
                   <td>
                     <button
@@ -313,8 +290,8 @@ const QuotationForm = () => {
         </div>
         
         <div className="form-actions">
-          <button type="submit" className="btn-generate">
-            Generate Quotation
+          <button type="submit" className="btn-generate" disabled={loading}>
+            {loading ? 'Generating...' : 'Generate Quotation'}
           </button>
         </div>
       </form>
