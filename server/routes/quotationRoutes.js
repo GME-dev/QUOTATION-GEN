@@ -3,6 +3,7 @@ const router = express.Router();
 const Quotation = require('../models/Quotation');
 const generatePDF = require('../utils/pdfGenerator');
 const path = require('path');
+const fs = require('fs');
 
 // Mutex for quotation number generation
 const quotationLocks = new Map();
@@ -111,11 +112,11 @@ router.post('/quotations', async (req, res) => {
 // Get all quotations
 router.get('/quotations', async (req, res) => {
   try {
-    const quotations = await Quotation.find().sort({ createdAt: -1 });
+    const quotations = await Quotation.find().sort({ date: -1 });
     res.json(quotations);
   } catch (error) {
     console.error('Error fetching quotations:', error);
-    res.status(500).json({ message: 'Failed to fetch quotations', error: error.message });
+    res.status(500).json({ message: 'Error fetching quotations', error: error.message });
   }
 });
 
@@ -130,6 +131,35 @@ router.get('/quotations/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching quotation:', error);
     res.status(500).json({ message: 'Failed to fetch quotation', error: error.message });
+  }
+});
+
+// Download PDF endpoint
+router.get('/quotations/:quotationNo/download', async (req, res) => {
+  try {
+    const quotation = await Quotation.findOne({ quotationNo: req.params.quotationNo });
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found' });
+    }
+
+    const pdfPath = path.join(__dirname, '../downloads', `${quotation.quotationNo}.pdf`);
+    
+    // Check if PDF exists
+    if (!fs.existsSync(pdfPath)) {
+      // Regenerate PDF if it doesn't exist
+      await generatePDF(quotation);
+    }
+
+    // Set headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Quotation-${quotation.quotationNo}.pdf`);
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(pdfPath);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error('Error downloading PDF:', error);
+    res.status(500).json({ message: 'Error downloading PDF', error: error.message });
   }
 });
 
