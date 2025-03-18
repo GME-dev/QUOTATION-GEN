@@ -9,7 +9,7 @@ const fs = require('fs');
 const quotationLocks = new Map();
 
 // Delete all quotations route
-router.delete('/', async (req, res) => {
+router.delete('/quotations', async (req, res) => {
   try {
     await Quotation.deleteMany({});
     console.log('All quotations deleted successfully');
