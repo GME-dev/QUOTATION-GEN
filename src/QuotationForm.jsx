@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './QuotationForm.css';
 
+// API base URL
+const API_BASE_URL = 'http://localhost:5000';
+
 const QuotationForm = () => {
   const [formData, setFormData] = useState({
     customerName: '',
@@ -74,7 +77,7 @@ const QuotationForm = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch('/api/quotations', {
+      const response = await fetch(`${API_BASE_URL}/api/quotations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,12 +90,41 @@ const QuotationForm = () => {
       });
       
       if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Quotation-${quotationNo}.pdf`;
-        a.click();
+        // Check if the response is a PDF
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/pdf')) {
+          // Get the filename from the Content-Disposition header
+          const contentDisposition = response.headers.get('content-disposition');
+          let filename = `Quotation-${quotationNo}.pdf`;
+          if (contentDisposition) {
+            const matches = /filename="(.+)"/.exec(contentDisposition);
+            if (matches && matches[1]) {
+              filename = matches[1];
+            }
+          }
+
+          // Create a blob from the PDF data
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          
+          // Create a temporary link element
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          
+          // Append to body, click, and remove
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clean up the URL object
+          setTimeout(() => window.URL.revokeObjectURL(url), 100);
+        } else {
+          // Handle JSON response (error case)
+          const data = await response.json();
+          console.error('Server response:', data);
+          alert(data.message || 'Failed to generate quotation');
+        }
         
         // Reset form after successful submission
         setFormData({
@@ -113,10 +145,13 @@ const QuotationForm = () => {
         setQuotationNo(`GM-${year}${month}${day}-${randomNum}`);
         
       } else {
-        console.error('Failed to generate quotation');
+        const errorData = await response.json();
+        console.error('Failed to generate quotation:', errorData);
+        alert(errorData.message || 'Failed to generate quotation');
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('An error occurred while generating the quotation');
     }
   };
   
