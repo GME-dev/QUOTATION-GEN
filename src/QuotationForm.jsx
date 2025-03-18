@@ -4,78 +4,78 @@ import './QuotationForm.css';
 // Get API URL from environment variable or default to production URL
 const API_URL = process.env.REACT_APP_API_URL || 'https://quotation-gen-production.up.railway.app';
 
-const QuotationForm = () => {
+function QuotationForm() {
   const [formData, setFormData] = useState({
     customerName: '',
     customerAddress: '',
     bikeRegNo: '',
     date: new Date().toISOString().split('T')[0],
     items: [{ description: '', quantity: 1, rate: 0 }],
-    remarks: 'Payment should be made within 7 days of invoice date.'
+    remarks: 'Payment should be made within 7 days of invoice date.',
+    quotationNo: '',
+    totalAmount: '0.00'
   });
   
-  const [quotationNo, setQuotationNo] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
   useEffect(() => {
-    // Generate quotation number: GM-YYYYMMDD-XXX
+    // Generate quotation number on component mount
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
-    
-    // For demo, we'll just use a random 3-digit number
     const randomNum = String(Math.floor(Math.random() * 900) + 100);
-    
-    setQuotationNo(`GM-${year}${month}${day}-${randomNum}`);
+    const quotationNo = `GM-${year}${month}${day}-${randomNum}`;
+    setFormData(prev => ({ ...prev, quotationNo }));
   }, []);
   
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
   
   const handleItemChange = (index, field, value) => {
-    const updatedItems = formData.items.map((item, i) => {
-      if (i === index) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    });
+    const newItems = [...formData.items];
+    newItems[index][field] = field === 'quantity' || field === 'rate' 
+      ? parseFloat(value) || 0 
+      : value;
     
-    setFormData({
-      ...formData,
-      items: updatedItems
-    });
+    // Calculate total amount
+    const total = newItems.reduce((sum, item) => {
+      return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
+    }, 0);
+
+    setFormData(prev => ({
+      ...prev,
+      items: newItems,
+      totalAmount: total.toFixed(2)
+    }));
   };
   
   const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, { description: '', quantity: 1, rate: 0 }]
-    });
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { description: '', quantity: 1, rate: 0 }]
+    }));
   };
   
   const removeItem = (index) => {
-    const updatedItems = formData.items.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      items: updatedItems
-    });
+    const newItems = formData.items.filter((_, i) => i !== index);
+    
+    // Recalculate total amount
+    const total = newItems.reduce((sum, item) => {
+      return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
+    }, 0);
+
+    setFormData(prev => ({
+      ...prev,
+      items: newItems,
+      totalAmount: total.toFixed(2)
+    }));
   };
   
-  const calculateTotal = () => {
-    return formData.items.reduce((total, item) => {
-      const amount = parseFloat(item.quantity) * parseFloat(item.rate || 0);
-      return total + amount;
-    }, 0).toFixed(2);
-  };
-  
-  const handleSubmit = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -86,11 +86,7 @@ const QuotationForm = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          quotationNo,
-          totalAmount: calculateTotal()
-        }),
+        body: JSON.stringify(formData)
       });
       
       if (!response.ok) {
@@ -99,43 +95,23 @@ const QuotationForm = () => {
       
       const data = await response.json();
       
-      // Handle successful response
-      if (data.pdfUrl) {
-        // Download the PDF
-        const pdfResponse = await fetch(`${API_URL}${data.pdfUrl}`);
-        if (!pdfResponse.ok) throw new Error('Failed to download PDF');
-        
-        const blob = await pdfResponse.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Quotation-${quotationNo}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        // Reset form
-        setFormData({
-          customerName: '',
-          customerAddress: '',
-          bikeRegNo: '',
-          date: new Date().toISOString().split('T')[0],
-          items: [{ description: '', quantity: 1, rate: 0 }],
-          remarks: 'Payment should be made within 7 days of invoice date.'
-        });
-        
-        // Generate new quotation number
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const randomNum = String(Math.floor(Math.random() * 900) + 100);
-        setQuotationNo(`GM-${year}${month}${day}-${randomNum}`);
-      }
+      // Download the PDF
+      window.location.href = `${API_URL}${data.pdfUrl}`;
+      
+      // Reset form
+      setFormData({
+        customerName: '',
+        customerAddress: '',
+        bikeRegNo: '',
+        date: new Date().toISOString().split('T')[0],
+        items: [{ description: '', quantity: 1, rate: 0 }],
+        remarks: 'Payment should be made within 7 days of invoice date.',
+        quotationNo: data.quotationNo,
+        totalAmount: '0.00'
+      });
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to generate quotation. Please try again.');
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -143,12 +119,12 @@ const QuotationForm = () => {
   
   return (
     <div className="quotation-form-container">
-      <form onSubmit={handleSubmit} className="quotation-form">
+      <form onSubmit={onSubmit} className="quotation-form">
         {error && <div className="error-message">{error}</div>}
         <div className="form-header">
           <h2>Generate Quotation</h2>
           <div>
-            <strong>Quotation #:</strong> {quotationNo}
+            <strong>Quotation #:</strong> {formData.quotationNo}
           </div>
         </div>
         
@@ -159,7 +135,7 @@ const QuotationForm = () => {
               type="text"
               name="customerName"
               value={formData.customerName}
-              onChange={handleChange}
+              onChange={handleInputChange}
               className="form-control"
               required
             />
@@ -170,7 +146,7 @@ const QuotationForm = () => {
             <textarea
               name="customerAddress"
               value={formData.customerAddress}
-              onChange={handleChange}
+              onChange={handleInputChange}
               className="form-control"
               required
             />
@@ -182,8 +158,9 @@ const QuotationForm = () => {
               type="text"
               name="bikeRegNo"
               value={formData.bikeRegNo}
-              onChange={handleChange}
+              onChange={handleInputChange}
               className="form-control"
+              required
             />
           </div>
           
@@ -193,7 +170,7 @@ const QuotationForm = () => {
               type="date"
               name="date"
               value={formData.date}
-              onChange={handleChange}
+              onChange={handleInputChange}
               className="form-control"
               required
             />
@@ -228,7 +205,7 @@ const QuotationForm = () => {
                     <input
                       type="number"
                       value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                       className="form-control"
                       min="1"
                       required
@@ -238,7 +215,7 @@ const QuotationForm = () => {
                     <input
                       type="number"
                       value={item.rate}
-                      onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
+                      onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
                       className="form-control"
                       min="0"
                       step="0.01"
@@ -267,7 +244,7 @@ const QuotationForm = () => {
                   <strong>Total:</strong>
                 </td>
                 <td>
-                  <strong>{calculateTotal()}</strong>
+                  <strong>{formData.totalAmount}</strong>
                 </td>
                 <td></td>
               </tr>
@@ -284,7 +261,7 @@ const QuotationForm = () => {
           <textarea
             name="remarks"
             value={formData.remarks}
-            onChange={handleChange}
+            onChange={handleInputChange}
             className="form-control"
           />
         </div>
@@ -297,6 +274,6 @@ const QuotationForm = () => {
       </form>
     </div>
   );
-};
+}
 
 export default QuotationForm;

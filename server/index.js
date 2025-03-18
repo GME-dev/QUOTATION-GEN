@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const cors = require('cors');
 const quotationRoutes = require('./routes/quotationRoutes');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -37,7 +38,7 @@ mongoose.connect(MONGODB_URI, {
 });
 
 // API routes
-app.use('/api', quotationRoutes);
+app.use('/api/quotations', quotationRoutes);
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
@@ -48,6 +49,12 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../build', 'index.html'));
   });
+}
+
+// Create downloads directory if it doesn't exist
+const downloadsDir = path.join(__dirname, 'downloads');
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
 }
 
 app.listen(PORT, () => {
