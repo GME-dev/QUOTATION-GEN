@@ -13,20 +13,11 @@ RUN apt-get update \
 # Create working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Create necessary directories
-RUN mkdir -p public/static/images
+# Copy the entire project first
+COPY . .
 
 # Install dependencies
 RUN npm install
-
-# Copy public directory first
-COPY public ./public
-
-# Copy the rest of the application
-COPY . .
 
 # Build the React app
 RUN npm run build
