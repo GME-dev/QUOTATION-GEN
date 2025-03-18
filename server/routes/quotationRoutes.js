@@ -8,8 +8,8 @@ const fs = require('fs');
 // Mutex for quotation number generation
 const quotationLocks = new Map();
 
-// Add this new route at the beginning of the routes
-router.delete('/deleteAll', async (req, res) => {
+// Delete all quotations route
+router.delete('/', async (req, res) => {
   try {
     await Quotation.deleteMany({});
     console.log('All quotations deleted successfully');
