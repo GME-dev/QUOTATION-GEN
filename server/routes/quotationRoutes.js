@@ -9,11 +9,11 @@ const fs = require('fs');
 const quotationLocks = new Map();
 
 // Delete all quotations route
-router.delete('/quotations', async (req, res) => {
+router.delete('/', async (req, res) => {
   try {
-    await Quotation.deleteMany({});
-    console.log('All quotations deleted successfully');
-    res.status(200).json({ message: 'All quotations deleted successfully' });
+    const result = await Quotation.deleteMany({});
+    console.log('All quotations deleted successfully', result);
+    res.status(200).json({ message: 'All quotations deleted successfully', count: result.deletedCount });
   } catch (error) {
     console.error('Error deleting quotations:', error);
     res.status(500).json({ error: 'Error deleting quotations' });
@@ -21,7 +21,7 @@ router.delete('/quotations', async (req, res) => {
 });
 
 // Create a new quotation and generate PDF
-router.post('/quotations', async (req, res) => {
+router.post('/', async (req, res) => {
   const quotationData = req.body;
   let lockId = null;
 
@@ -122,7 +122,7 @@ router.post('/quotations', async (req, res) => {
 });
 
 // Get all quotations
-router.get('/quotations', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const quotations = await Quotation.find().sort({ date: -1 });
     res.json(quotations);
@@ -133,7 +133,7 @@ router.get('/quotations', async (req, res) => {
 });
 
 // Get quotation by ID
-router.get('/quotations/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const quotation = await Quotation.findById(req.params.id);
     if (!quotation) {
@@ -147,7 +147,7 @@ router.get('/quotations/:id', async (req, res) => {
 });
 
 // Download PDF endpoint
-router.get('/quotations/:quotationNo/download', async (req, res) => {
+router.get('/:quotationNo/download', async (req, res) => {
   try {
     const quotation = await Quotation.findOne({ quotationNo: req.params.quotationNo });
     if (!quotation) {
