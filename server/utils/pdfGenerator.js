@@ -110,17 +110,35 @@ const generatePDF = async (quotationData) => {
     
     // Wait for images to load
     await page.evaluate(() => {
-      return Promise.all(
-        Array.from(document.images)
-          .filter(img => !img.complete)
-          .map(img => new Promise(resolve => {
-            img.onload = img.onerror = resolve;
-          }))
-      );
+      return new Promise((resolve) => {
+        const images = Array.from(document.images);
+        const loadedImages = images.filter(img => img.complete);
+        
+        if (images.length === loadedImages.length) {
+          resolve();
+        } else {
+          let loadedCount = loadedImages.length;
+          const onLoad = () => {
+            loadedCount++;
+            if (loadedCount === images.length) {
+              resolve();
+            }
+          };
+          
+          images.forEach(img => {
+            if (!img.complete) {
+              img.addEventListener('load', onLoad);
+              img.addEventListener('error', onLoad);
+            }
+          });
+        }
+      });
     });
 
-    // Add extra wait time for images
-    await page.waitForTimeout(1000);
+    // Use setTimeout instead of waitForTimeout
+    await page.evaluate(() => {
+      return new Promise(resolve => setTimeout(resolve, 1000));
+    });
 
     // Generate PDF
     console.log('Generating PDF');
