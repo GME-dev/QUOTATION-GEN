@@ -8,6 +8,18 @@ const fs = require('fs');
 // Mutex for quotation number generation
 const quotationLocks = new Map();
 
+// Add this new route at the beginning of the routes
+router.delete('/deleteAll', async (req, res) => {
+  try {
+    await Quotation.deleteMany({});
+    console.log('All quotations deleted successfully');
+    res.status(200).json({ message: 'All quotations deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting quotations:', error);
+    res.status(500).json({ error: 'Error deleting quotations' });
+  }
+});
+
 // Create a new quotation and generate PDF
 router.post('/quotations', async (req, res) => {
   const quotationData = req.body;
@@ -162,5 +174,29 @@ router.get('/quotations/:quotationNo/download', async (req, res) => {
     res.status(500).json({ message: 'Error downloading PDF', error: error.message });
   }
 });
+
+// Modify the getNextQuotationNumber function to start from a specific number
+async function getNextQuotationNumber(date) {
+  const today = new Date(date);
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const datePrefix = `GM-${year}${month}${day}`;
+
+  // Start counting from 4
+  const baseNumber = 4;
+  
+  const latestQuotation = await Quotation.findOne({
+    quotationNo: new RegExp(`^${datePrefix}`)
+  }).sort({ quotationNo: -1 });
+
+  if (!latestQuotation) {
+    return `${datePrefix}-${String(baseNumber).padStart(3, '0')}`;
+  }
+
+  const currentNumber = parseInt(latestQuotation.quotationNo.split('-')[2]);
+  const nextNumber = currentNumber + 1;
+  return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+}
 
 module.exports = router;
