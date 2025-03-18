@@ -16,10 +16,16 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Create necessary directories
+RUN mkdir -p public/static/images
+
 # Install dependencies
 RUN npm install
 
-# Copy project files
+# Copy public directory first
+COPY public ./public
+
+# Copy the rest of the application
 COPY . .
 
 # Build the React app
