@@ -18,6 +18,7 @@ async function getBrowser() {
   if (!browserInstance) {
     browserInstance = await puppeteer.launch({
       headless: true,
+      executablePath: process.env.NODE_ENV === 'production' ? '/usr/bin/google-chrome' : undefined,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -25,8 +26,7 @@ async function getBrowser() {
         '--disable-gpu',
         '--disable-software-rasterizer',
         '--disable-extensions',
-        '--allow-file-access-from-files',
-        '--enable-local-file-accesses'
+        '--single-process'
       ]
     });
   }
