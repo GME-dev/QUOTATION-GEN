@@ -26,7 +26,8 @@ async function getBrowser() {
         '--disable-gpu',
         '--disable-software-rasterizer',
         '--disable-extensions',
-        '--single-process'
+        '--allow-running-insecure-content',
+        '--disable-web-security'
       ]
     });
   }
@@ -107,12 +108,19 @@ const generatePDF = async (quotationData) => {
       waitUntil: ['load', 'domcontentloaded', 'networkidle0']
     });
     
-    // Add a script to ensure SVGs are loaded
+    // Wait for images to load
     await page.evaluate(() => {
-      return new Promise(resolve => {
-        setTimeout(resolve, 500);
-      });
+      return Promise.all(
+        Array.from(document.images)
+          .filter(img => !img.complete)
+          .map(img => new Promise(resolve => {
+            img.onload = img.onerror = resolve;
+          }))
+      );
     });
+
+    // Add extra wait time for images
+    await page.waitForTimeout(1000);
 
     // Generate PDF
     console.log('Generating PDF');

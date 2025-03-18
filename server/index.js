@@ -7,13 +7,15 @@ const cors = require('cors');
 const quotationRoutes = require('./routes/quotationRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 // CORS configuration
 app.use(cors());
 
 // Middleware
 app.use(bodyParser.json());
+
+// Serve static files
 app.use('/static', express.static(path.join(__dirname, '..', 'public', 'static')));
 app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
 

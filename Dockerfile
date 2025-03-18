@@ -13,8 +13,14 @@ RUN apt-get update \
 # Create working directory
 WORKDIR /app
 
-# Copy the entire project first
+# Create necessary directories
+RUN mkdir -p public/static/images server/downloads
+
+# Copy the entire project
 COPY . .
+
+# Ensure proper permissions for directories
+RUN chmod -R 755 public/static/images server/downloads
 
 # Install dependencies
 RUN npm install
