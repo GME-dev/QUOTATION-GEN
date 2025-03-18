@@ -8,17 +8,25 @@ const crypto = require('crypto');
 // Create a single browser instance that can be reused
 let browserInstance = null;
 
+// Create downloads directory if it doesn't exist
+const downloadsDir = path.join(__dirname, '../downloads');
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+}
+
 async function getBrowser() {
   if (!browserInstance) {
     browserInstance = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--disable-software-rasterizer',
-        '--disable-extensions'
+        '--disable-extensions',
+        '--allow-file-access-from-files',
+        '--enable-local-file-accesses'
       ]
     });
   }
@@ -28,6 +36,7 @@ async function getBrowser() {
 const generatePDF = async (quotationData) => {
   let page = null;
   const tempDir = path.join(os.tmpdir(), `puppeteer-${crypto.randomBytes(6).toString('hex')}`);
+  const outputPath = path.join(downloadsDir, `${quotationData.quotationNo}.pdf`);
   
   try {
     // Read and validate template
@@ -84,84 +93,96 @@ const generatePDF = async (quotationData) => {
     // Create new page
     console.log('Creating new page');
     page = await browser.newPage();
-    await page.setDefaultNavigationTimeout(30000);
-    await page.setDefaultTimeout(30000);
     
-    // Set content
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 1600,
+      deviceScaleFactor: 2
+    });
+
+    // Set content with proper wait conditions
     console.log('Setting page content');
     await page.setContent(html, { 
-      waitUntil: ['load', 'networkidle0'],
-      timeout: 30000
+      waitUntil: ['load', 'domcontentloaded', 'networkidle0']
     });
-    console.log('Page content set successfully');
     
+    // Add a script to ensure SVGs are loaded
+    await page.evaluate(() => {
+      return new Promise(resolve => {
+        setTimeout(resolve, 500);
+      });
+    });
+
     // Generate PDF
     console.log('Generating PDF');
-    const pdfBuffer = await page.pdf({
+    await page.pdf({
+      path: outputPath,
       format: 'A4',
       printBackground: true,
       margin: {
-        top: '10mm',
-        right: '10mm',
-        bottom: '10mm',
-        left: '10mm'
-      },
-      timeout: 30000,
-      preferCSSPageSize: true
+        top: '20mm',
+        right: '20mm',
+        bottom: '20mm',
+        left: '20mm'
+      }
     });
+
+    // Set proper file permissions
+    fs.chmodSync(outputPath, 0o644);
+
     console.log('PDF generated successfully');
-    
-    // Close only the page, not the browser
+    return outputPath;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
+  } finally {
     if (page) {
       await page.close();
       console.log('Page closed successfully');
     }
-    
-    return pdfBuffer;
-  } catch (error) {
-    console.error('Error in PDF generation:', error);
-    console.error('Error Stack:', error.stack);
-    
-    // Clean up on error
-    if (page) {
+    // Clean up temp directory
+    if (fs.existsSync(tempDir)) {
       try {
-        await page.close();
-        console.log('Page closed after error');
-      } catch (closeError) {
-        console.error('Error closing page:', closeError);
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch (error) {
+        console.error('Error cleaning up temp directory:', error);
       }
     }
-    
-    throw error;
   }
 };
 
-// Helper function for date ordinal
 function getOrdinalSuffix(day) {
   if (day > 3 && day < 21) return 'th';
   switch (day % 10) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
+    case 1:  return "st";
+    case 2:  return "nd";
+    case 3:  return "rd";
+    default: return "th";
   }
 }
 
-// Cleanup function to be called when server shuts down
 async function cleanup() {
   if (browserInstance) {
     try {
       await browserInstance.close();
       browserInstance = null;
-      console.log('Browser instance closed during cleanup');
+      console.log('Browser instance closed successfully');
     } catch (error) {
-      console.error('Error closing browser during cleanup:', error);
+      console.error('Error closing browser instance:', error);
     }
   }
 }
 
-process.on('SIGTERM', cleanup);
-process.on('SIGINT', cleanup);
+// Cleanup on process exit
+process.on('exit', cleanup);
+process.on('SIGINT', async () => {
+  await cleanup();
+  process.exit();
+});
+process.on('SIGTERM', async () => {
+  await cleanup();
+  process.exit();
+});
 
-module.exports = generatePDF;
 module.exports = generatePDF;

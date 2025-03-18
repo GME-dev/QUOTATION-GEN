@@ -10,19 +10,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS configuration
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 // Middleware
 app.use(bodyParser.json());
+app.use('/static', express.static(path.join(__dirname, '..', 'public', 'static')));
+app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
 
 // Suppress mongoose strictQuery warning
 mongoose.set('strictQuery', false);
 
-// Connect to MongoDB - update with your MongoDB Atlas URI or local MongoDB
+// Connect to MongoDB
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/quotation-generator';
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
@@ -39,12 +37,14 @@ mongoose.connect(MONGODB_URI, {
 // API routes
 app.use('/api', quotationRoutes);
 
-// Serve static assets if in production
+// Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React build directory
   app.use(express.static(path.join(__dirname, '../build')));
   
+  // Handle React routing, return all requests to React app
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../build/index.html'));
+    res.sendFile(path.join(__dirname, '../build', 'index.html'));
   });
 }
 

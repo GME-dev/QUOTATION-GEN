@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Quotation = require('../models/Quotation');
 const generatePDF = require('../utils/pdfGenerator');
+const path = require('path');
 
 // Mutex for quotation number generation
 const quotationLocks = new Map();
@@ -80,50 +81,27 @@ router.post('/quotations', async (req, res) => {
       });
     }
 
-    // Save to database
-    console.log('Saving quotation to database');
-    const newQuotation = new Quotation(quotationData);
-    await newQuotation.save();
+    // Generate PDF
+    const pdfPath = await generatePDF(quotationData);
+    
+    // Save quotation to database
+    const quotation = new Quotation(quotationData);
+    await quotation.save();
     console.log('Quotation saved successfully');
 
-    try {
-      // Generate PDF
-      console.log('Generating PDF');
-      const pdfBuffer = await generatePDF(quotationData);
-      console.log('PDF generated successfully');
-
-      // Set response headers
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=Quotation-${quotationNo}.pdf`);
-      res.setHeader('Content-Length', pdfBuffer.length);
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-
-      // Send the PDF buffer
-      return res.send(pdfBuffer);
-    } catch (pdfError) {
-      console.error('PDF Generation Error:', pdfError);
-      console.error('Error Stack:', pdfError.stack);
-      
-      // If PDF generation fails, still return success for the quotation creation
-      return res.status(200).json({ 
-        message: 'Quotation saved successfully but PDF generation failed',
-        quotationNo: quotationNo,
-        error: pdfError.message,
-        details: 'Please try downloading the PDF again from the quotations list'
-      });
-    }
-  } catch (error) {
-    console.error('Server Error:', error);
-    console.error('Error Stack:', error.stack);
-    res.status(500).json({ 
-      message: 'Failed to generate quotation',
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    // Return the PDF download URL
+    const pdfFileName = path.basename(pdfPath);
+    res.json({
+      message: 'Quotation created successfully',
+      quotationId: quotation._id,
+      pdfUrl: `/downloads/${pdfFileName}`,
+      quotationNo: quotationData.quotationNo
     });
+
+  } catch (error) {
+    console.error('Error creating quotation:', error);
+    res.status(500).json({ message: 'Error creating quotation', error: error.message });
   } finally {
-    // Release lock
     if (lockId) {
       quotationLocks.delete(lockId);
     }
